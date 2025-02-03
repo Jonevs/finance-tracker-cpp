@@ -1,0 +1,12 @@
+# Ignore build artifacts and binaries
+/build/
+*.exe
+*.dll
+
+# Qt specific files
+*.pro.user
+*.qmake.stash
+
+# OS-specific files
+.DS_Store
+Thumbs.db
