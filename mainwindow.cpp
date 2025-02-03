@@ -25,8 +25,11 @@ MainWindow::~MainWindow() {}
 void MainWindow::setupUI() {
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
+    mainLayout->setContentsMargins(15, 15, 15, 15);
+    mainLayout->setSpacing(10); 
 
     QHBoxLayout *formLayout = new QHBoxLayout();
+    formLayout->setSpacing(10);
 
     dateInput = new QDateEdit(QDate::currentDate(), this);
     dateInput->setCalendarPopup(true);
@@ -48,15 +51,18 @@ void MainWindow::setupUI() {
     formLayout->addWidget(amountInput);
 
     addButton = new QPushButton("Add Transaction", this);
+    addButton->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;");
     connect(addButton, &QPushButton::clicked, this, &MainWindow::addTransaction);
     formLayout->addWidget(addButton);
 
     editButton = new QPushButton("Edit Transaction", this);
+    editButton->setStyleSheet("background-color: #2196F3; color: white; font-weight: bold;");
     connect(editButton, &QPushButton::clicked, this, &MainWindow::editTransaction);
     editButton->setEnabled(false);  
     formLayout->addWidget(editButton);
 
     deleteButton = new QPushButton("Delete Transaction", this);
+    deleteButton->setStyleSheet("background-color: #F44336; color: white; font-weight: bold;");
     connect(deleteButton, &QPushButton::clicked, this, &MainWindow::deleteTransaction);
     deleteButton->setEnabled(false);  
     formLayout->addWidget(deleteButton);
@@ -64,10 +70,12 @@ void MainWindow::setupUI() {
     mainLayout->addLayout(formLayout);
 
     transactionTable = new QTableWidget(this);
+    transactionTable->setStyleSheet("QTableWidget::item:selected { background-color:rgb(115, 139, 160); }");
     transactionTable->setColumnCount(5);
     transactionTable->setHorizontalHeaderLabels({"ID", "Date", "Category", "Description", "Amount"});
     transactionTable->setColumnHidden(0, true);
-    transactionTable->horizontalHeader()->setStretchLastSection(true);
+    transactionTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    transactionTable->resizeRowsToContents();
     transactionTable->setEditTriggers(QAbstractItemView::NoEditTriggers);  
     transactionTable->setSelectionMode(QAbstractItemView::SingleSelection);
     transactionTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -77,7 +85,7 @@ void MainWindow::setupUI() {
     mainLayout->addWidget(transactionTable);
 
     setCentralWidget(centralWidget);
-    setWindowTitle("Personal Finance Tracker");
+    setWindowTitle("Personal Finance Tracker by Jonevs");
     resize(800, 400);
 }
 
