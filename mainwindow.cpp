@@ -73,10 +73,23 @@ void MainWindow::setupUI() {
     formLayout->addWidget(deleteButton);
 
     mainLayout->addLayout(formLayout);
+    mainLayout->setSpacing(20);
 
-    // ================= FILTER TOGGLE BUTTON =================
+    // ================= FILTER TOGGLE & EXPORT BUTTONS =================
+    QHBoxLayout *topButtonLayout = new QHBoxLayout(); 
+    topButtonLayout->setAlignment(Qt::AlignLeft);     
+    topButtonLayout->setSpacing(10); 
+
     QPushButton *showFiltersButton = createStyledButton("Show Filters", "#607D8B", "#455A64");
-    mainLayout->addWidget(showFiltersButton);
+    showFiltersButton->setFixedWidth(120);  
+    topButtonLayout->addWidget(showFiltersButton);
+
+    QPushButton *exportButton = createStyledButton("Export to CSV", "#FF9800", "#FB8C00");
+    exportButton->setFixedWidth(120);  
+    connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportToCSV);
+    topButtonLayout->addWidget(exportButton);
+
+    mainLayout->addLayout(topButtonLayout);
 
     // ================= FILTER SECTION =================
     QWidget *filterContainer = new QWidget(this);
@@ -134,11 +147,6 @@ void MainWindow::setupUI() {
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
     connect(transactionTable, &CustomTableWidget::rowDeselected, this, &MainWindow::clearForm);
     mainLayout->addWidget(transactionTable);
-
-    // ================= EXPORT CSV BTN =================
-    QPushButton *exportButton = createStyledButton("Export to CSV", "#FF9800", "#FB8C00");
-    connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportToCSV);
-    mainLayout->addWidget(exportButton);
 
     setCentralWidget(centralWidget);
     setWindowTitle("Personal Finance Tracker by Jonevs");
