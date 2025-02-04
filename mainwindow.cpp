@@ -161,6 +161,7 @@ void MainWindow::setupUI() {
     )");
 
     transactionTable->horizontalHeader()->setToolTip("Shortcuts: Ctrl+D to sort by Date, Ctrl+A to sort by Amount");
+    this->setFocus();
 
     connect(transactionTable->horizontalHeader(), &QHeaderView::sectionClicked, this, &MainWindow::sortTable);
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
@@ -169,6 +170,7 @@ void MainWindow::setupUI() {
 
     // Initialize Shortcut for Sorting by Date (Ctrl+D)
     sortByDateShortcut = new QShortcut(QKeySequence("Ctrl+D"), this);
+    sortByDateShortcut->setContext(Qt::ApplicationShortcut);
     connect(sortByDateShortcut, &QShortcut::activated, this, [=]() {
         transactionTable->sortItems(1, dateSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
         QString headerText = dateSortAscending ? "Date (Y-m-d) ▲" : "Date (Y-m-d) ▼";
@@ -178,6 +180,7 @@ void MainWindow::setupUI() {
 
     // Initialize Shortcut for Sorting by Amount (Ctrl+A)
     sortByAmountShortcut = new QShortcut(QKeySequence("Ctrl+A"), this);
+    sortByAmountShortcut->setContext(Qt::ApplicationShortcut);
     connect(sortByAmountShortcut, &QShortcut::activated, this, [=]() {
         transactionTable->sortItems(4, amountSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
         QString headerText = amountSortAscending ? "Amount ▲" : "Amount ▼";
