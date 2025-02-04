@@ -8,6 +8,10 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug> 
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
+#include <QMessageBox>
 #include "customtablewidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -130,6 +134,11 @@ void MainWindow::setupUI() {
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
     connect(transactionTable, &CustomTableWidget::rowDeselected, this, &MainWindow::clearForm);
     mainLayout->addWidget(transactionTable);
+
+    // ================= EXPORT CSV BTN =================
+    QPushButton *exportButton = createStyledButton("Export to CSV", "#FF9800", "#FB8C00");
+    connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportToCSV);
+    mainLayout->addWidget(exportButton);
 
     setCentralWidget(centralWidget);
     setWindowTitle("Personal Finance Tracker by Jonevs");
@@ -380,4 +389,36 @@ void MainWindow::applyFilters() {
         transactionTable->setItem(row, 5, typeItem);
         row++;
     }
+}
+
+void MainWindow::exportToCSV() {
+    QString fileName = QFileDialog::getSaveFileName(this, "Export Transactions", "", "CSV Files (*.csv)");
+
+    if (fileName.isEmpty()) {
+        return; 
+    }
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Export Error", "Could not open file for writing.");
+        return;
+    }
+
+    QTextStream out(&file);
+
+    out << "Date,Category,Description,Amount,Type\n";
+
+    for (int row = 0; row < transactionTable->rowCount(); ++row) {
+        QString date = transactionTable->item(row, 1)->text();
+        QString category = transactionTable->item(row, 2)->text();
+        QString description = transactionTable->item(row, 3)->text().replace(",", " "); 
+        QString amount = transactionTable->item(row, 4)->text();
+        QString type = transactionTable->item(row, 5)->text();
+
+        out << QString("%1,%2,%3,%4,%5\n").arg(date, category, description, amount, type);
+    }
+
+    file.close();
+
+    QMessageBox::information(this, "Export Successful", "Transactions have been exported successfully.");
 }

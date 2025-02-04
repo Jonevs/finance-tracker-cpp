@@ -25,6 +25,7 @@ private slots:
     void clearForm(); 
     void applyFilters(); 
     void clearFilters(); 
+    void exportToCSV();
 
 private:
     void setupUI();
