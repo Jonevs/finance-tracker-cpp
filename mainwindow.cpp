@@ -29,97 +29,93 @@ void MainWindow::setupUI() {
     mainLayout->setContentsMargins(15, 15, 15, 15);
     mainLayout->setSpacing(10); 
 
+    // ================= FORM SECTION =================
     QHBoxLayout *formLayout = new QHBoxLayout();
     formLayout->setSpacing(10);
 
-    dateInput = new QDateEdit(QDate::currentDate(), this);
-    dateInput->setCalendarPopup(true);
+    // Form Inputs
     formLayout->addWidget(new QLabel("Date:"));
+    dateInput = createDateEdit(QDate::currentDate());
     formLayout->addWidget(dateInput);
 
-    typeInput = new QComboBox(this);
-    typeInput->addItems({"Expense", "Income"});  
     formLayout->addWidget(new QLabel("Type:"));
+    typeInput = createComboBox({"Expense", "Income"});
     formLayout->addWidget(typeInput);
 
-    categoryInput = new QComboBox(this);
-    categoryInput->addItems({"Food", "Rent", "Entertainment", "Transport", "Other"});
     formLayout->addWidget(new QLabel("Category:"));
+    categoryInput = createComboBox({"Food", "Rent", "Entertainment", "Transport", "Other"});
     formLayout->addWidget(categoryInput);
 
-    descriptionInput = new QLineEdit(this);
     formLayout->addWidget(new QLabel("Description:"));
+    descriptionInput = new QLineEdit(this);
     formLayout->addWidget(descriptionInput);
 
+    formLayout->addWidget(new QLabel("Amount:"));
     amountInput = new QLineEdit(this);
     amountInput->setPlaceholderText("0.00");
-    formLayout->addWidget(new QLabel("Amount:"));
     formLayout->addWidget(amountInput);
 
-    addButton = new QPushButton("Add", this);
-    addButton->setStyleSheet(R"(
-        QPushButton {
-            background-color: #4CAF50;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-            padding: 5px 10px;
-        }
-        QPushButton:hover {
-            background-color: #45A049;
-        }
-    )");
+    // Form Buttons
+    addButton = createStyledButton("Add", "#4CAF50", "#45A049");
     connect(addButton, &QPushButton::clicked, this, &MainWindow::addTransaction);
     formLayout->addWidget(addButton);
 
-    editButton = new QPushButton("Edit", this);
-    editButton->setStyleSheet(R"(
-        QPushButton {
-            background-color: #2196F3;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-            padding: 5px 10px;
-        }
-        QPushButton:hover {
-            background-color: #1976D2;
-        }
-        QPushButton:disabled {
-            background-color: #B0C4DE; 
-            color: #D3D3D3; 
-            font-weight: normal;  
-            border: 1px solid #A9A9A9;
-        }
-    )");
+    editButton = createStyledButton("Edit", "#2196F3", "#1976D2", true);
     connect(editButton, &QPushButton::clicked, this, &MainWindow::editTransaction);
-    editButton->setEnabled(false);  
     formLayout->addWidget(editButton);
 
-    deleteButton = new QPushButton("Delete", this);
-    deleteButton->setStyleSheet(R"(
-        QPushButton {
-            background-color: #F44336;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-            padding: 5px 10px;
-        }
-        QPushButton:hover {
-            background-color: #D32F2F;
-        }
-        QPushButton:disabled {
-            background-color: #E6B0AA;  
-            color: #D3D3D3;        
-            font-weight: normal;       
-            border: 1px solid #A9A9A9; 
-        }
-    )");
+    deleteButton = createStyledButton("Delete", "#F44336", "#D32F2F", true);
     connect(deleteButton, &QPushButton::clicked, this, &MainWindow::deleteTransaction);
-    deleteButton->setEnabled(false);  
     formLayout->addWidget(deleteButton);
 
     mainLayout->addLayout(formLayout);
 
+    // ================= FILTER TOGGLE BUTTON =================
+    QPushButton *showFiltersButton = createStyledButton("Show Filters", "#607D8B", "#455A64");
+    mainLayout->addWidget(showFiltersButton);
+
+    // ================= FILTER SECTION =================
+    QWidget *filterContainer = new QWidget(this);
+    QHBoxLayout *filterLayout = new QHBoxLayout(filterContainer);
+    filterLayout->setContentsMargins(0, 0, 0, 0);  
+    filterContainer->setVisible(false);
+    mainLayout->addWidget(filterContainer);
+
+    searchInput = new QLineEdit(this);
+    searchInput->setPlaceholderText("Search Description...");
+    filterLayout->addWidget(searchInput);
+
+    filterCategory = createComboBox({"All Categories", "Food", "Rent", "Entertainment", "Transport", "Other"});
+    filterLayout->addWidget(filterCategory);
+
+    filterType = createComboBox({"All Types", "Income", "Expense"});
+    filterLayout->addWidget(filterType);
+
+    filterLayout->addWidget(new QLabel("From:"));
+    filterStartDate = createDateEdit(QDate::currentDate().addMonths(-1));
+    filterLayout->addWidget(filterStartDate);
+
+    filterLayout->addWidget(new QLabel("To:"));
+    filterEndDate = createDateEdit(QDate::currentDate());
+    filterLayout->addWidget(filterEndDate);
+
+    QPushButton *applyFiltersButton = createStyledButton("Apply Filters", "#2196F3", "#1976D2");
+    connect(applyFiltersButton, &QPushButton::clicked, this, &MainWindow::applyFilters);
+    filterLayout->addWidget(applyFiltersButton);
+
+    QPushButton *clearFiltersButton = createStyledButton("Clear Filters", "#9E9E9E", "#757575");
+    connect(clearFiltersButton, &QPushButton::clicked, this, &MainWindow::clearFilters);
+    filterLayout->addWidget(clearFiltersButton);
+
+    connect(showFiltersButton, &QPushButton::clicked, this, [=]() {
+        bool isVisible = filterContainer->isVisible();
+        filterContainer->setVisible(!isVisible);  
+        showFiltersButton->setText(isVisible ? "Show Filters" : "Hide Filters");
+    });
+
+    connect(searchInput, &QLineEdit::textChanged, this, &MainWindow::applyFilters);
+
+    // ================= TRANSACTION TABLE =================
     transactionTable = new CustomTableWidget(this);
     transactionTable->setStyleSheet("QTableWidget::item:selected { background-color:rgb(115, 139, 160); }");
     transactionTable->setColumnCount(6);
@@ -140,6 +136,43 @@ void MainWindow::setupUI() {
     resize(800, 400);
 }
 
+QPushButton* MainWindow::createStyledButton(const QString &text, const QString &color, const QString &hoverColor, bool disabled) {
+    QPushButton *button = new QPushButton(text, this);
+    QString style = QString(R"(
+        QPushButton {
+            background-color: %1;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+        QPushButton:hover {
+            background-color: %2;
+        }
+        QPushButton:disabled {
+            background-color: #D3D3D3;
+            color: #A9A9A9;
+            font-weight: normal;
+            border: 1px solid #A9A9A9;
+        }
+    )").arg(color, hoverColor);
+    button->setStyleSheet(style);
+    button->setEnabled(!disabled);
+    return button;
+}
+
+QComboBox* MainWindow::createComboBox(const QStringList &items) {
+    QComboBox *comboBox = new QComboBox(this);
+    comboBox->addItems(items);
+    return comboBox;
+}
+
+QDateEdit* MainWindow::createDateEdit(const QDate &date) {
+    QDateEdit *dateEdit = new QDateEdit(date, this);
+    dateEdit->setCalendarPopup(true);
+    return dateEdit;
+}
+
 void MainWindow::clearForm() {
     descriptionInput->clear();
     amountInput->clear();
@@ -149,6 +182,18 @@ void MainWindow::clearForm() {
     selectedTransactionId = -1;
     editButton->setEnabled(false);
     deleteButton->setEnabled(false);
+}
+
+void MainWindow::clearFilters() {
+    // Reset all filter inputs to their default values
+    searchInput->clear();
+    filterCategory->setCurrentIndex(0);  // "All Categories"
+    filterType->setCurrentIndex(0);      // "All Types"
+    filterStartDate->setDate(QDate::currentDate().addMonths(-1));  // Last month
+    filterEndDate->setDate(QDate::currentDate());                 // Today
+
+    // Reload all transactions without filters
+    loadTransactions();
 }
 
 void MainWindow::addTransaction() {
@@ -279,3 +324,60 @@ void MainWindow::deleteTransaction() {
     }
 }
 
+void MainWindow::applyFilters() {
+    QString searchText = searchInput->text().trimmed();
+    QString selectedCategory = filterCategory->currentText();
+    QString selectedType = filterType->currentText();
+    QString startDate = filterStartDate->date().toString("yyyy-MM-dd");
+    QString endDate = filterEndDate->date().toString("yyyy-MM-dd");
+
+    transactionTable->setRowCount(0);  
+
+    QSqlQuery query;
+    QString sqlQuery = "SELECT * FROM transactions WHERE date BETWEEN ? AND ?";
+    QList<QVariant> bindValues = {startDate, endDate};
+
+    // Add filters dynamically
+    if (selectedCategory != "All Categories") {
+        sqlQuery += " AND category = ?";
+        bindValues.append(selectedCategory);
+    }
+    if (selectedType != "All Types") {
+        sqlQuery += " AND type = ?";
+        bindValues.append(selectedType);  
+    }
+    if (!searchText.isEmpty()) {
+        sqlQuery += " AND description LIKE ?";
+        bindValues.append("%" + searchText + "%");
+    }
+
+    query.prepare(sqlQuery);
+    for (const auto &value : bindValues) {
+        query.addBindValue(value);
+    }
+
+    if (!query.exec()) {
+        qDebug() << "Filter query failed:" << query.lastError().text();
+        return;
+    }
+
+    int row = 0;
+    while (query.next()) {
+        transactionTable->insertRow(row);
+        transactionTable->setItem(row, 0, new QTableWidgetItem(query.value(0).toString()));  // ID
+        transactionTable->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));  // Date
+        transactionTable->setItem(row, 2, new QTableWidgetItem(query.value(2).toString()));  // Category
+        transactionTable->setItem(row, 3, new QTableWidgetItem(query.value(3).toString()));  // Description
+        transactionTable->setItem(row, 4, new QTableWidgetItem(QString::number(query.value(4).toDouble(), 'f', 2)));  // Amount
+
+        QString type = query.value(5).toString();
+        QTableWidgetItem *typeItem = new QTableWidgetItem(type);
+        if (type == "Income") {
+            typeItem->setForeground(QColor("green"));
+        } else {
+            typeItem->setForeground(QColor("red"));
+        }
+        transactionTable->setItem(row, 5, typeItem);
+        row++;
+    }
+}

@@ -21,8 +21,15 @@ private slots:
     void editTransaction();  
     void deleteTransaction(); 
     void onTransactionSelected(); 
+    void loadTransactions();  
+    void clearForm(); 
+    void applyFilters(); 
+    void clearFilters(); 
 
 private:
+    void setupUI();
+
+    // Form Inputs
     QLineEdit *descriptionInput;
     QComboBox *categoryInput;
     QComboBox *typeInput; 
@@ -30,15 +37,24 @@ private:
     QDateEdit *dateInput;
     QPushButton *addButton;
     QPushButton *editButton;    
-    QPushButton *deleteButton;  
+    QPushButton *deleteButton; 
+
+    // Table 
     CustomTableWidget *transactionTable;
 
-    int selectedTransactionId;  
-    int lastSelectedRow = -1;  
+    // Filter & Search Elements
+    QLineEdit *searchInput;        
+    QComboBox *filterCategory;     
+    QComboBox *filterType;         
+    QDateEdit *filterStartDate;    
+    QDateEdit *filterEndDate;      
 
-    void setupUI();          
-    void loadTransactions();  
-    void clearForm();        
+    int selectedTransactionId = -1;
+    int lastSelectedRow = -1;       
+
+    QPushButton* createStyledButton(const QString &text, const QString &color, const QString &hoverColor, bool disabled = false);
+    QComboBox* createComboBox(const QStringList &items);
+    QDateEdit* createDateEdit(const QDate &date); 
 };
 
-#endif
+#endif // MAINWINDOW_H
