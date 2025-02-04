@@ -4,14 +4,13 @@
 
 bool Database::initialize() {
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("finance_tracker.db");  // The database file
+    db.setDatabaseName("finance_tracker.db"); 
 
     if (!db.open()) {
         qDebug() << "Database error:" << db.lastError().text();
         return false;
     }
 
-    // Create transactions table if it doesn't exist
     QSqlQuery query;
     QString createTable = R"(
         CREATE TABLE IF NOT EXISTS transactions (
@@ -19,7 +18,8 @@ bool Database::initialize() {
             date TEXT NOT NULL,
             category TEXT NOT NULL,
             description TEXT,
-            amount REAL NOT NULL
+            amount REAL NOT NULL,
+            type TEXT NOT NULL DEFAULT 'expense' 
         )
     )";
 
@@ -31,15 +31,16 @@ bool Database::initialize() {
     return true;
 }
 
-bool Database::addTransaction(const QString &date, const QString &category, const QString &description, double amount) {
+bool Database::addTransaction(const QString &date, const QString &category, const QString &description, double amount, const QString &type) {
     qDebug() << "Inserting: " << date << category << description << amount;
     
     QSqlQuery query;
-    query.prepare("INSERT INTO transactions (date, category, description, amount) VALUES (?, ?, ?, ?)");
+    query.prepare("INSERT INTO transactions (date, category, description, amount, type) VALUES (?, ?, ?, ?, ?)");
     query.addBindValue(date);
     query.addBindValue(category);
     query.addBindValue(description);
     query.addBindValue(amount);
+    query.addBindValue(type);
 
     if (!query.exec()) {
         qDebug() << "Failed to add transaction:" << query.lastError().text();
@@ -49,13 +50,14 @@ bool Database::addTransaction(const QString &date, const QString &category, cons
     return true;
 }
 
-bool Database::updateTransaction(int id, const QString &date, const QString &category, const QString &description, double amount) {
+bool Database::updateTransaction(int id, const QString &date, const QString &category, const QString &description, double amount, const QString &type) {
     QSqlQuery query;
-    query.prepare("UPDATE transactions SET date = ?, category = ?, description = ?, amount = ? WHERE id = ?");
+    query.prepare("UPDATE transactions SET date = ?, category = ?, description = ?, amount = ?, type = ? WHERE id = ?");
     query.addBindValue(date);
     query.addBindValue(category);
     query.addBindValue(description);
     query.addBindValue(amount);
+    query.addBindValue(type);
     query.addBindValue(id);
 
     if (!query.exec()) {
@@ -80,6 +82,6 @@ bool Database::deleteTransaction(int id) {
 }
 
 QSqlQuery Database::getAllTransactions() {
-    QSqlQuery query("SELECT id, date, category, description, amount FROM transactions ORDER BY date DESC");
+    QSqlQuery query("SELECT id, date, category, description, amount, type FROM transactions ORDER BY date DESC");
     return query;
 }

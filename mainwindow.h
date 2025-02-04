@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QDateEdit>
 #include <QPushButton>
+#include "customtablewidget.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -24,18 +25,20 @@ private slots:
 private:
     QLineEdit *descriptionInput;
     QComboBox *categoryInput;
+    QComboBox *typeInput; 
     QLineEdit *amountInput;
     QDateEdit *dateInput;
     QPushButton *addButton;
     QPushButton *editButton;    
     QPushButton *deleteButton;  
-    QTableWidget *transactionTable;
+    CustomTableWidget *transactionTable;
 
     int selectedTransactionId;  
+    int lastSelectedRow = -1;  
 
     void setupUI();          
     void loadTransactions();  
     void clearForm();        
 };
 
-#endif // MAINWINDOW_H
+#endif

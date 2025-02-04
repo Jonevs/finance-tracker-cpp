@@ -16,6 +16,8 @@ add_executable(FinanceTracker
     mainwindow.h
     database.cpp  
     database.h
+    customtablewidget.cpp
+    customtablewidget.h
 )
 
 target_link_libraries(FinanceTracker Qt5::Widgets Qt5::Sql)
