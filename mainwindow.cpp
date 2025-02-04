@@ -136,14 +136,36 @@ void MainWindow::setupUI() {
     transactionTable = new CustomTableWidget(this);
     transactionTable->setStyleSheet("QTableWidget::item:selected { background-color:rgb(115, 139, 160); }");
     transactionTable->setColumnCount(6);
-    transactionTable->setHorizontalHeaderLabels({"ID", "Date", "Category", "Description", "Amount", "Type"});
+    transactionTable->setHorizontalHeaderLabels({"ID", "Date (Y-m-d)", "Category", "Description", "Amount", "Type"});
     transactionTable->setColumnHidden(0, true);
     transactionTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     transactionTable->resizeRowsToContents();
     transactionTable->setEditTriggers(QAbstractItemView::NoEditTriggers);  
     transactionTable->setSelectionMode(QAbstractItemView::SingleSelection);
     transactionTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    transactionTable->setSortingEnabled(true);
 
+    transactionTable->horizontalHeader()->setStyleSheet(R"(
+        QHeaderView::section {
+            background-color: #607D8B;
+            color: white;
+            font-weight: bold;
+            padding: 5px;
+            border: 1px solid #455A64;
+        }
+
+        QHeaderView::up-arrow {
+            width: 50px;
+            height: 50px;
+        }
+
+        QHeaderView::down-arrow {
+            width: 50px;
+            height: 50px;
+        }
+    )");
+
+    connect(transactionTable->horizontalHeader(), &QHeaderView::sectionClicked, this, &MainWindow::sortTable);
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
     connect(transactionTable, &CustomTableWidget::rowDeselected, this, &MainWindow::clearForm);
     mainLayout->addWidget(transactionTable);
@@ -429,4 +451,18 @@ void MainWindow::exportToCSV() {
     file.close();
 
     QMessageBox::information(this, "Export Successful", "Transactions have been exported successfully.");
+}
+
+void MainWindow::sortTable(int column) {
+    static bool ascendingOrder = true;  
+
+    if (column == 1) {  
+        transactionTable->sortItems(column, ascendingOrder ? Qt::AscendingOrder : Qt::DescendingOrder);
+    } else if (column == 4) {  
+        transactionTable->sortItems(column, ascendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder); 
+    } else {
+        transactionTable->sortItems(column, ascendingOrder ? Qt::AscendingOrder : Qt::DescendingOrder);
+    }
+
+    ascendingOrder = !ascendingOrder;  
 }

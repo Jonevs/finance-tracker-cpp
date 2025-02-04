@@ -26,6 +26,7 @@ private slots:
     void applyFilters(); 
     void clearFilters(); 
     void exportToCSV();
+    void sortTable(int column);
 
 private:
     void setupUI();
