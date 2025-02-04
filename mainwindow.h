@@ -29,6 +29,9 @@ private slots:
     void clearFilters(); 
     void exportToCSV();
     void sortTable(int column);
+    void updateHeaderArrows(int sortedColumn, bool ascending);
+    void highlightSortedColumn();
+    void clearSorting();
 
 private:
     void setupUI();
@@ -57,8 +60,9 @@ private:
     QMap<int, bool> columnSortOrder;
 
     int selectedTransactionId = -1;
-    int lastSelectedRow = -1;       
-
+    int lastSelectedRow = -1;     
+    int currentSortedColumn = -1;  
+ 
     bool dateSortAscending = true;    
     bool amountSortAscending = true;  
 

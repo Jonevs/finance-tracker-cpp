@@ -161,31 +161,29 @@ void MainWindow::setupUI() {
     )");
 
     transactionTable->horizontalHeader()->setToolTip("Shortcuts: Ctrl+D to sort by Date, Ctrl+A to sort by Amount");
+    transactionTable->horizontalHeader()->setToolTip("Single-click to sort, double-click to clear sorting");
     this->setFocus();
 
     connect(transactionTable->horizontalHeader(), &QHeaderView::sectionClicked, this, &MainWindow::sortTable);
+    connect(transactionTable->horizontalHeader(), &QHeaderView::sectionDoubleClicked, this, &MainWindow::clearSorting);
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
     connect(transactionTable, &CustomTableWidget::rowDeselected, this, &MainWindow::clearForm);
     mainLayout->addWidget(transactionTable);
 
-    // Initialize Shortcut for Sorting by Date (Ctrl+D)
+    // Ctrl + D for Date Sorting
     sortByDateShortcut = new QShortcut(QKeySequence("Ctrl+D"), this);
-    sortByDateShortcut->setContext(Qt::ApplicationShortcut);
     connect(sortByDateShortcut, &QShortcut::activated, this, [=]() {
-        transactionTable->sortItems(1, dateSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
-        QString headerText = dateSortAscending ? "Date (Y-m-d) ▲" : "Date (Y-m-d) ▼";
-        transactionTable->horizontalHeaderItem(1)->setText(headerText);
-        dateSortAscending = !dateSortAscending; 
+        transactionTable->sortItems(1, dateSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);
+        updateHeaderArrows(1, dateSortAscending);  // Update header arrows for Date
+        dateSortAscending = !dateSortAscending;
     });
 
-    // Initialize Shortcut for Sorting by Amount (Ctrl+A)
+    // Ctrl + A for Amount Sorting
     sortByAmountShortcut = new QShortcut(QKeySequence("Ctrl+A"), this);
-    sortByAmountShortcut->setContext(Qt::ApplicationShortcut);
     connect(sortByAmountShortcut, &QShortcut::activated, this, [=]() {
-        transactionTable->sortItems(4, amountSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
-        QString headerText = amountSortAscending ? "Amount ▲" : "Amount ▼";
-        transactionTable->horizontalHeaderItem(4)->setText(headerText);
-        amountSortAscending = !amountSortAscending; 
+        transactionTable->sortItems(4, amountSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);
+        updateHeaderArrows(4, amountSortAscending);  // Update header arrows for Amount
+        amountSortAscending = !amountSortAscending;
     });
 
     setCentralWidget(centralWidget);
@@ -253,6 +251,18 @@ void MainWindow::clearFilters() {
     loadTransactions();
 }
 
+void MainWindow::clearSorting() {
+    if (currentSortedColumn == -1) return;  
+
+    transactionTable->setSortingEnabled(false);  
+    loadTransactions();  
+    transactionTable->setSortingEnabled(true);   
+
+    updateHeaderArrows(-1, true); 
+    currentSortedColumn = -1;  
+    highlightSortedColumn();   
+}
+
 void MainWindow::addTransaction() {
     QString date = dateInput->date().toString("yyyy-MM-dd");
     QString category = categoryInput->currentText();
@@ -273,7 +283,9 @@ void MainWindow::addTransaction() {
     }
 
     if (Database::addTransaction(date, category, description, amount, type)) {
+        transactionTable->setSortingEnabled(false);
         loadTransactions();
+        transactionTable->setSortingEnabled(true); 
         clearForm(); 
     } else {
         QMessageBox::critical(this, "Database Error", "Failed to add transaction.");
@@ -287,6 +299,7 @@ void MainWindow::loadTransactions() {
     int row = 0;
 
     while (query.next()) {
+        qDebug() << "Loading row:" << row << query.value(0).toString();
         transactionTable->insertRow(row);
         transactionTable->setItem(row, 0, new QTableWidgetItem(query.value(0).toString()));  // ID (hidden)
         transactionTable->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));  // Date
@@ -305,6 +318,7 @@ void MainWindow::loadTransactions() {
         transactionTable->setItem(row, 5, typeItem); 
         row++;
     }
+    qDebug() << "Total rows loaded:" << row;
 }
 
 void MainWindow::onTransactionSelected() {
@@ -321,6 +335,9 @@ void MainWindow::onTransactionSelected() {
     // Retrieve data from the selected row
     selectedTransactionId = transactionTable->item(currentRow, 0)->text().toInt();
     qDebug() << "Selected Transaction ID:" << selectedTransactionId;
+
+    if (!transactionTable->item(currentRow, 0)) return;  // Prevent null reference crash
+    selectedTransactionId = transactionTable->item(currentRow, 0)->text().toInt();
 
     // Populate the form fields with the selected row's data
     dateInput->setDate(QDate::fromString(transactionTable->item(currentRow, 1)->text(), "yyyy-MM-dd"));
@@ -474,16 +491,39 @@ void MainWindow::exportToCSV() {
 void MainWindow::sortTable(int column) {
     bool ascending = columnSortOrder.value(column, true);
     transactionTable->sortItems(column, ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
-    columnSortOrder[column] = !ascending;
+    updateHeaderArrows(column, ascending);  
+    columnSortOrder[column] = !ascending; 
+}
+
+void MainWindow::updateHeaderArrows(int sortedColumn, bool ascending) {
+    currentSortedColumn = sortedColumn;
 
     for (int i = 0; i < transactionTable->columnCount(); ++i) {
         QString headerText = transactionTable->horizontalHeaderItem(i)->text();
         headerText = headerText.remove(" ▲").remove(" ▼");  
 
-        if (i == column) {
+        if (i == sortedColumn) {
             headerText += ascending ? " ▲" : " ▼";  
         }
 
         transactionTable->horizontalHeaderItem(i)->setText(headerText);
+    }
+
+    highlightSortedColumn();
+}
+
+void MainWindow::highlightSortedColumn() {
+    for (int row = 0; row < transactionTable->rowCount(); ++row) {
+        for (int col = 0; col < transactionTable->columnCount(); ++col) {
+            QTableWidgetItem *item = transactionTable->item(row, col);
+
+            if (item) {
+                if (col == currentSortedColumn) {
+                    item->setBackground(QColor("#FFF9C4"));  
+                } else {
+                    item->setBackground(Qt::white); 
+                }
+            }
+        }
     }
 }
