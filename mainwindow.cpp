@@ -154,21 +154,36 @@ void MainWindow::setupUI() {
             border: 1px solid #455A64;
         }
 
-        QHeaderView::up-arrow {
-            width: 50px;
-            height: 50px;
-        }
-
-        QHeaderView::down-arrow {
-            width: 50px;
-            height: 50px;
+        QHeaderView::up-arrow, QHeaderView::down-arrow {
+            width: 0px;  
+            height: 0px;
         }
     )");
+
+    transactionTable->horizontalHeader()->setToolTip("Shortcuts: Ctrl+D to sort by Date, Ctrl+A to sort by Amount");
 
     connect(transactionTable->horizontalHeader(), &QHeaderView::sectionClicked, this, &MainWindow::sortTable);
     connect(transactionTable, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTransactionSelected);
     connect(transactionTable, &CustomTableWidget::rowDeselected, this, &MainWindow::clearForm);
     mainLayout->addWidget(transactionTable);
+
+    // Initialize Shortcut for Sorting by Date (Ctrl+D)
+    sortByDateShortcut = new QShortcut(QKeySequence("Ctrl+D"), this);
+    connect(sortByDateShortcut, &QShortcut::activated, this, [=]() {
+        transactionTable->sortItems(1, dateSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
+        QString headerText = dateSortAscending ? "Date (Y-m-d) ▲" : "Date (Y-m-d) ▼";
+        transactionTable->horizontalHeaderItem(1)->setText(headerText);
+        dateSortAscending = !dateSortAscending; 
+    });
+
+    // Initialize Shortcut for Sorting by Amount (Ctrl+A)
+    sortByAmountShortcut = new QShortcut(QKeySequence("Ctrl+A"), this);
+    connect(sortByAmountShortcut, &QShortcut::activated, this, [=]() {
+        transactionTable->sortItems(4, amountSortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);  
+        QString headerText = amountSortAscending ? "Amount ▲" : "Amount ▼";
+        transactionTable->horizontalHeaderItem(4)->setText(headerText);
+        amountSortAscending = !amountSortAscending; 
+    });
 
     setCentralWidget(centralWidget);
     setWindowTitle("Personal Finance Tracker by Jonevs");
@@ -454,15 +469,18 @@ void MainWindow::exportToCSV() {
 }
 
 void MainWindow::sortTable(int column) {
-    static bool ascendingOrder = true;  
+    bool ascending = columnSortOrder.value(column, true);
+    transactionTable->sortItems(column, ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
+    columnSortOrder[column] = !ascending;
 
-    if (column == 1) {  
-        transactionTable->sortItems(column, ascendingOrder ? Qt::AscendingOrder : Qt::DescendingOrder);
-    } else if (column == 4) {  
-        transactionTable->sortItems(column, ascendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder); 
-    } else {
-        transactionTable->sortItems(column, ascendingOrder ? Qt::AscendingOrder : Qt::DescendingOrder);
+    for (int i = 0; i < transactionTable->columnCount(); ++i) {
+        QString headerText = transactionTable->horizontalHeaderItem(i)->text();
+        headerText = headerText.remove(" ▲").remove(" ▼");  
+
+        if (i == column) {
+            headerText += ascending ? " ▲" : " ▼";  
+        }
+
+        transactionTable->horizontalHeaderItem(i)->setText(headerText);
     }
-
-    ascendingOrder = !ascendingOrder;  
 }

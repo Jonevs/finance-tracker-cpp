@@ -7,6 +7,8 @@
 #include <QComboBox>
 #include <QDateEdit>
 #include <QPushButton>
+#include <QShortcut>
+#include <QMap>
 #include "customtablewidget.h"
 
 class MainWindow : public QMainWindow {
@@ -49,10 +51,16 @@ private:
     QComboBox *filterCategory;     
     QComboBox *filterType;         
     QDateEdit *filterStartDate;    
-    QDateEdit *filterEndDate;      
+    QDateEdit *filterEndDate;    
+    QShortcut *sortByDateShortcut;
+    QShortcut *sortByAmountShortcut;  
+    QMap<int, bool> columnSortOrder;
 
     int selectedTransactionId = -1;
     int lastSelectedRow = -1;       
+
+    bool dateSortAscending = true;    
+    bool amountSortAscending = true;  
 
     QPushButton* createStyledButton(const QString &text, const QString &color, const QString &hoverColor, bool disabled = false);
     QComboBox* createComboBox(const QStringList &items);
