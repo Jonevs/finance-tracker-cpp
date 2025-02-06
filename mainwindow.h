@@ -32,6 +32,7 @@ private slots:
     void updateHeaderArrows(int sortedColumn, bool ascending);
     void highlightSortedColumn();
     void clearSorting();
+    void updateTableColors();
 
 private:
     void setupUI();
@@ -66,9 +67,12 @@ private:
     bool dateSortAscending = true;    
     bool amountSortAscending = true;  
 
+    bool darkModeEnabled = false; 
+
     QPushButton* createStyledButton(const QString &text, const QString &color, const QString &hoverColor, bool disabled = false);
     QComboBox* createComboBox(const QStringList &items);
     QDateEdit* createDateEdit(const QDate &date); 
+    QString getDarkModeStyle();
 };
 
 #endif // MAINWINDOW_H

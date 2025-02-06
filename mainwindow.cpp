@@ -84,10 +84,27 @@ void MainWindow::setupUI() {
     showFiltersButton->setFixedWidth(120);  
     topButtonLayout->addWidget(showFiltersButton);
 
-    QPushButton *exportButton = createStyledButton("Export to CSV", "#FF9800", "#FB8C00");
+    QPushButton *exportButton = createStyledButton("Export CSV", "#FF9800", "#FB8C00");
     exportButton->setFixedWidth(120);  
     connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportToCSV);
     topButtonLayout->addWidget(exportButton);
+
+    QPushButton *toggleDarkModeButton = createStyledButton("Dark Mode", "#9E9E9E", "#757575");
+    toggleDarkModeButton->setFixedWidth(120);
+    connect(toggleDarkModeButton, &QPushButton::clicked, this, [=]() {
+        darkModeEnabled = !darkModeEnabled;
+
+        if (darkModeEnabled) {
+            this->setStyleSheet(getDarkModeStyle());
+            toggleDarkModeButton->setText("Light Mode");
+        } else {
+            this->setStyleSheet("");  
+            toggleDarkModeButton->setText("Dark Mode");
+        }
+        updateTableColors();
+    });
+    topButtonLayout->addWidget(toggleDarkModeButton);
+
 
     mainLayout->addLayout(topButtonLayout);
 
@@ -372,7 +389,6 @@ void MainWindow::editTransaction() {
         return;
     }
 
-    // Update the transaction in the database
     if (Database::updateTransaction(selectedTransactionId, date, category, description, amount, type)) {
         QMessageBox::information(this, "Success", "Transaction updated successfully.");
         loadTransactions();  
@@ -390,8 +406,8 @@ void MainWindow::deleteTransaction() {
                                   QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::Yes) {
         if (Database::deleteTransaction(selectedTransactionId)) {
-            loadTransactions();  // Refresh the table
-            clearForm();         // Clear form after deletion
+            loadTransactions();  
+            clearForm();         
         } else {
             QMessageBox::critical(this, "Database Error", "Failed to delete transaction.");
         }
@@ -399,60 +415,59 @@ void MainWindow::deleteTransaction() {
 }
 
 void MainWindow::applyFilters() {
-    QString searchText = searchInput->text().trimmed();
+    QString searchTerm = searchInput->text().trimmed().toLower();
     QString selectedCategory = filterCategory->currentText();
     QString selectedType = filterType->currentText();
-    QString startDate = filterStartDate->date().toString("yyyy-MM-dd");
-    QString endDate = filterEndDate->date().toString("yyyy-MM-dd");
+    QDate startDate = filterStartDate->date();
+    QDate endDate = filterEndDate->date();
 
-    transactionTable->setRowCount(0);  
+    // Iterate over all rows and apply filters
+    for (int row = 0; row < transactionTable->rowCount(); ++row) {
+        bool showRow = true;
 
-    QSqlQuery query;
-    QString sqlQuery = "SELECT * FROM transactions WHERE date BETWEEN ? AND ?";
-    QList<QVariant> bindValues = {startDate, endDate};
+        // Defensive Checks: Ensure all table items exist
+        QTableWidgetItem *dateItem = transactionTable->item(row, 1);
+        QTableWidgetItem *categoryItem = transactionTable->item(row, 2);
+        QTableWidgetItem *descriptionItem = transactionTable->item(row, 3);
+        QTableWidgetItem *amountItem = transactionTable->item(row, 4);
+        QTableWidgetItem *typeItem = transactionTable->item(row, 5);
 
-    // Add filters dynamically
-    if (selectedCategory != "All Categories") {
-        sqlQuery += " AND category = ?";
-        bindValues.append(selectedCategory);
-    }
-    if (selectedType != "All Types") {
-        sqlQuery += " AND type = ?";
-        bindValues.append(selectedType);  
-    }
-    if (!searchText.isEmpty()) {
-        sqlQuery += " AND description LIKE ?";
-        bindValues.append("%" + searchText + "%");
-    }
-
-    query.prepare(sqlQuery);
-    for (const auto &value : bindValues) {
-        query.addBindValue(value);
-    }
-
-    if (!query.exec()) {
-        qDebug() << "Filter query failed:" << query.lastError().text();
-        return;
-    }
-
-    int row = 0;
-    while (query.next()) {
-        transactionTable->insertRow(row);
-        transactionTable->setItem(row, 0, new QTableWidgetItem(query.value(0).toString()));  // ID
-        transactionTable->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));  // Date
-        transactionTable->setItem(row, 2, new QTableWidgetItem(query.value(2).toString()));  // Category
-        transactionTable->setItem(row, 3, new QTableWidgetItem(query.value(3).toString()));  // Description
-        transactionTable->setItem(row, 4, new QTableWidgetItem(QString::number(query.value(4).toDouble(), 'f', 2)));  // Amount
-
-        QString type = query.value(5).toString();
-        QTableWidgetItem *typeItem = new QTableWidgetItem(type);
-        if (type == "Income") {
-            typeItem->setForeground(QColor("green"));
-        } else {
-            typeItem->setForeground(QColor("red"));
+        // If any critical data is missing, hide the row
+        if (!dateItem || !categoryItem || !descriptionItem || !amountItem || !typeItem) {
+            transactionTable->setRowHidden(row, true);
+            continue;  // Skip to the next row
         }
-        transactionTable->setItem(row, 5, typeItem);
-        row++;
+
+        // Filter by Date Range
+        QDate transactionDate = QDate::fromString(dateItem->text(), "yyyy-MM-dd");
+        if (!transactionDate.isValid() || transactionDate < startDate || transactionDate > endDate) {
+            showRow = false;
+        }
+
+        // Filter by Search Term in Description
+        if (!descriptionItem->text().toLower().contains(searchTerm)) {
+            showRow = false;
+        }
+
+        // Filter by Category
+        if (selectedCategory != "All Categories" && categoryItem->text() != selectedCategory) {
+            showRow = false;
+        }
+
+        // Filter by Type (Income/Expense)
+        if (selectedType != "All Types" && typeItem->text() != selectedType) {
+            showRow = false;
+        }
+
+        // Filter by Valid Amount (Handle invalid numbers safely)
+        bool ok;
+        double amount = amountItem->text().toDouble(&ok);
+        if (!ok) {
+            showRow = false;  // Hide rows with invalid amounts
+        }
+
+        // Apply final visibility
+        transactionTable->setRowHidden(row, !showRow);
     }
 }
 
@@ -498,18 +513,30 @@ void MainWindow::sortTable(int column) {
 void MainWindow::updateHeaderArrows(int sortedColumn, bool ascending) {
     currentSortedColumn = sortedColumn;
 
-    for (int i = 0; i < transactionTable->columnCount(); ++i) {
-        QString headerText = transactionTable->horizontalHeaderItem(i)->text();
-        headerText = headerText.remove(" ▲").remove(" ▼");  
-
-        if (i == sortedColumn) {
-            headerText += ascending ? " ▲" : " ▼";  
-        }
-
-        transactionTable->horizontalHeaderItem(i)->setText(headerText);
+    if (darkModeEnabled) {
+        this->setStyleSheet(getDarkModeStyle());  
     }
 
-    highlightSortedColumn();
+    for (int i = 0; i < transactionTable->columnCount(); ++i) {
+        QString headerText = transactionTable->horizontalHeaderItem(i)->text();
+        headerText = headerText.remove(" ▲").remove(" ▼");  // Remove existing arrows
+
+        if (i == sortedColumn) {
+            headerText += ascending ? " ▲" : " ▼";  // Add arrow for the sorted column
+
+            // Apply dark mode styling for the sorted column
+            transactionTable->horizontalHeaderItem(i)->setBackground(QColor("#546E7A"));  // Darker background in dark mode
+            transactionTable->horizontalHeaderItem(i)->setForeground(QBrush(Qt::white));  // White text for contrast
+        } else {
+            // Reset styles for non-sorted columns
+            transactionTable->horizontalHeaderItem(i)->setBackground(QBrush(Qt::transparent));
+            transactionTable->horizontalHeaderItem(i)->setForeground(QBrush(Qt::white));
+        }
+
+        transactionTable->horizontalHeaderItem(i)->setText(headerText);  // Update header text
+    }
+
+    highlightSortedColumn();  // Ensure the column highlight adapts to dark mode
 }
 
 void MainWindow::highlightSortedColumn() {
@@ -518,12 +545,148 @@ void MainWindow::highlightSortedColumn() {
             QTableWidgetItem *item = transactionTable->item(row, col);
 
             if (item) {
+                // Highlight the sorted column
                 if (col == currentSortedColumn) {
-                    item->setBackground(QColor("#FFF9C4"));  
+                    if (darkModeEnabled) {
+                        item->setBackground(QColor("#546E7A"));  // Dark mode highlight
+                    } else {
+                        item->setBackground(QColor("#FFF9C4"));  // Light mode highlight
+                    }
                 } else {
-                    item->setBackground(Qt::white); 
+                    item->setBackground(QBrush(Qt::transparent));  // Reset background for non-sorted columns
+                }
+
+                // Preserve Income/Expense colors in the "Type" column (column 5)
+                if (col == 5) {  
+                    QString type = item->text();
+                    if (type == "Income") {
+                        item->setForeground(QColor("#00C853"));  
+                    } else if (type == "Expense") {
+                        item->setForeground(QColor("#FF5252")); 
+                    }
+                } else {
+                    // Apply general text color for other columns based on the mode
+                    item->setForeground(QBrush(darkModeEnabled ? Qt::white : Qt::black));
                 }
             }
         }
     }
 }
+
+QString MainWindow::getDarkModeStyle() {
+    return R"(
+        QWidget {
+            background-color: #2E2E2E;
+            color: #FFFFFF;
+        }
+
+        QLineEdit, QComboBox, QDateEdit {
+            background-color: #424242;
+            border: 1px solid #616161;
+            color: #FFFFFF;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        /* Transaction Table Styles */
+        QTableWidget {
+            background-color: #424242;
+            color: #FFFFFF;
+            gridline-color: #616161;
+            selection-background-color: #546E7A;  /* Selected Row Background */
+            selection-color: #FFFFFF;             /* Selected Text Color */
+        }
+
+        /* Table Header Styles */
+        QHeaderView::section {
+            background-color: #37474F;
+            color: #FFFFFF;
+            font-weight: bold;
+            padding: 5px;
+            border: 1px solid #455A64;
+        }
+
+        /* Hover Effect for Table Rows */
+        QTableWidget::item:hover {
+            background-color: #546E7A;  /* Hover background color */
+            color: #FFFFFF;             /* Hover text color */
+        }
+
+        QHeaderView::section.sorted {
+            background-color: #546E7A;  /* Darker background for sorted column */
+            color: #FFFFFF;
+            font-weight: bold;
+        }
+
+        QPushButton {
+            background-color: #616161;
+            color: #FFFFFF;
+            border-radius: 4px;
+            padding: 5px 10px;
+        }
+
+        QPushButton:hover {
+            background-color: #757575;
+        }
+
+        QPushButton:disabled {
+            background-color: #9E9E9E;
+            color: #BDBDBD;
+        }
+
+        QScrollBar:vertical {
+            background: #333333;
+            width: 10px;
+        }
+
+        QScrollBar::handle:vertical {
+            background: #757575;
+            min-height: 20px;
+        }
+
+        QLabel {
+            color: #FFFFFF;
+        }
+    )";
+}
+
+void MainWindow::updateTableColors() {
+    for (int row = 0; row < transactionTable->rowCount(); ++row) {
+        for (int col = 0; col < transactionTable->columnCount(); ++col) {
+            QTableWidgetItem *item = transactionTable->item(row, col);
+
+            if (item) {
+                // Check if this is the sorted column
+                if (col == currentSortedColumn) {
+                    // Apply highlight based on the mode
+                    if (darkModeEnabled) {
+                        item->setBackground(QColor("#546E7A"));  // Dark mode highlight
+                    } else {
+                        item->setBackground(QColor("#FFF9C4"));  // Light mode highlight
+                    }
+                } else {
+                    // Reset background for non-sorted columns
+                    item->setBackground(QBrush(Qt::transparent));
+                }
+
+                // Preserve Income/Expense colors in the Type column (column 5)
+                if (col == 5) {
+                    QString type = item->text();
+                    if (type == "Income") {
+                        item->setForeground(QColor("#00C853"));  // Darker green for Income
+                    } else if (type == "Expense") {
+                        item->setForeground(QColor("#FF5252"));  // Subtle red for Expense
+                    }
+                } else {
+                    // Apply default text color based on mode for other columns
+                    item->setForeground(QBrush(darkModeEnabled ? Qt::white : Qt::black));
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
