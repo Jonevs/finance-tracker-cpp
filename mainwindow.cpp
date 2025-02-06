@@ -167,8 +167,8 @@ void MainWindow::setupUI() {
             background-color: rgb(115, 139, 160);
         }
         QTableWidget::item:hover {
-            background-color: #E3F2FD;  /* Light blue hover background */
-            color: #000000;             /* Keep text black */
+            background-color: #E3F2FD;  
+            color: #000000;             
         }
     )");
 
