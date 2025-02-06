@@ -162,6 +162,16 @@ void MainWindow::setupUI() {
     transactionTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     transactionTable->setSortingEnabled(true);
 
+    transactionTable->setStyleSheet(R"(
+        QTableWidget::item:selected {
+            background-color: rgb(115, 139, 160);
+        }
+        QTableWidget::item:hover {
+            background-color: #E3F2FD;  /* Light blue hover background */
+            color: #000000;             /* Keep text black */
+        }
+    )");
+
     transactionTable->horizontalHeader()->setStyleSheet(R"(
         QHeaderView::section {
             background-color: #607D8B;
